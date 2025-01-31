@@ -1,4 +1,3 @@
-
 package com.mila.mobile.mobileNew.webSecurity;
 
 import org.springframework.context.annotation.Bean;
@@ -30,14 +29,18 @@ public class WebSecurity {
         AuthenticationManagerBuilder authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
         authenticationManagerBuilder.userDetailsService(userDetailsService).passwordEncoder(bCryptPasswordEncoder);
 
-        // Configure HttpSecurity
+        AuthenticationManager authenticationManager = authenticationManagerBuilder.build();
+
+        // Configure HttpSecurity properly
         http
-                .cors(AbstractHttpConfigurer::disable) // Customize or disable CORS
-                .csrf(AbstractHttpConfigurer::disable) // Disable CSRF
-                .authorizeHttpRequests(authorize -> authorize
+                .csrf(AbstractHttpConfigurer::disable)  // Disable CSRF
+                .cors(AbstractHttpConfigurer::disable)  // Customize CORS as needed
+                .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, SecurityConstants.SIGN_UP_URL).permitAll()
                         .anyRequest().authenticated()
-                );
+                )
+                .authenticationManager(authenticationManager) // Set authentication manager
+                .addFilter(new AuthenticationFilter(authenticationManager)); // Add custom authentication filter
 
         return http.build();
     }
