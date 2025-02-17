@@ -1,7 +1,10 @@
 package com.mila.mobile.mobileNew.webSecurity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mila.mobile.mobileNew.SpringApplicationContext;
 import com.mila.mobile.mobileNew.model.request.UserLoginRequestModel;
+import com.mila.mobile.mobileNew.service.UserService;
+import com.mila.mobile.mobileNew.shared.dto.UserDto;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -64,7 +67,10 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
         // Generate the JWT token
         String token = jwtBuilder.compact();
 
+        UserService userService = (UserService) SpringApplicationContext.getBean("userServiceImpl");
+        UserDto userDto = userService.getUser(userName);
         // Add the token to the response header
         res.addHeader(SecurityConstants.HEADER_STRING, SecurityConstants.TOKEN_PREFIX + token);
+        res.addHeader("UserID", userDto.getUserId());
     }
 }
