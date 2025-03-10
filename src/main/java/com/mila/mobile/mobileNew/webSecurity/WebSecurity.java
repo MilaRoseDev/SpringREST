@@ -31,6 +31,10 @@ public class WebSecurity {
 
         AuthenticationManager authenticationManager = authenticationManagerBuilder.build();
 
+        //Customise Login URL
+        AuthenticationFilter authenticationFilter = new AuthenticationFilter(authenticationManager);
+        authenticationFilter.setFilterProcessesUrl("/users/login");
+
         // Configure HttpSecurity properly
         http
                 .csrf(AbstractHttpConfigurer::disable)  // Disable CSRF
@@ -40,7 +44,7 @@ public class WebSecurity {
                         .anyRequest().authenticated()
                 )
                 .authenticationManager(authenticationManager) // Set authentication manager
-                .addFilter(new AuthenticationFilter(authenticationManager)); // Add custom authentication filter
+                .addFilter(authenticationFilter); // Add custom authentication filter
 
         return http.build();
     }
