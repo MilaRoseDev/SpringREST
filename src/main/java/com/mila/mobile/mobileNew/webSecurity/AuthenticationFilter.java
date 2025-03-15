@@ -5,7 +5,6 @@ import com.mila.mobile.mobileNew.SpringApplicationContext;
 import com.mila.mobile.mobileNew.model.request.UserLoginRequestModel;
 import com.mila.mobile.mobileNew.service.UserService;
 import com.mila.mobile.mobileNew.shared.dto.UserDto;
-import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
@@ -23,6 +22,7 @@ import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
@@ -34,12 +34,11 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
     public Authentication attemptAuthentication(HttpServletRequest req, HttpServletResponse res)
             throws AuthenticationException {
         try {
-            // Parse login credentials from the request body
+
             UserLoginRequestModel creds = new ObjectMapper().readValue(req.getInputStream(), UserLoginRequestModel.class);
 
             return getAuthenticationManager().authenticate(
-                    new UsernamePasswordAuthenticationToken(creds.getEmail(), creds.getPassword(), new ArrayList<>())
-            );
+                    new UsernamePasswordAuthenticationToken(creds.getEmail(), creds.getPassword(), new ArrayList<>()));
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -50,27 +49,23 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
     protected void successfulAuthentication(HttpServletRequest req, HttpServletResponse res, FilterChain chain,
                                             Authentication auth) throws IOException, ServletException {
 
-        // Generate a secure key using `Keys.hmacShaKeyFor`
-        SecretKey secretKey = Keys.hmacShaKeyFor(SecurityConstants.TOKEN_SECRET.getBytes());
-
-        // Retrieve the username from the authenticated user
-        String userName = ((User) auth.getPrincipal()).getUsername();
-
-        // Build the JWT with individual claims
+        // Generate JWT and add it to a Response Header
+        byte[] secretKeyBytes = SecurityConstants.getTokenSecret().getBytes();
+        SecretKey secretKey = Keys.hmacShaKeyFor(secretKeyBytes);
         Instant now = Instant.now();
-        JwtBuilder jwtBuilder = Jwts.builder()
-                .claim("sub", userName) // Subject claim (username)
-                .claim("iat", now.getEpochSecond()) // Issued at time
-                .claim("exp", now.plusMillis(SecurityConstants.EXPIRATION_TIME).getEpochSecond()) // Expiration time
-                .signWith(secretKey); // Sign the JWT with the secure key
 
-        // Generate the JWT token
-        String token = jwtBuilder.compact();
+        String userName = ((User) auth.getPrincipal()).getUsername();
+        String token = Jwts.builder()
+                .subject(userName)
+                .expiration(Date.from(now.plusMillis(SecurityConstants.EXPIRATION_TIME)))
+                .issuedAt(Date.from(now))
+                .signWith(secretKey)
+                .compact();
 
         UserService userService = (UserService) SpringApplicationContext.getBean("userServiceImpl");
         UserDto userDto = userService.getUser(userName);
-        // Add the token to the response header
+
         res.addHeader(SecurityConstants.HEADER_STRING, SecurityConstants.TOKEN_PREFIX + token);
-        res.addHeader("UserID", userDto.getUserId());
+        res.addHeader("UserId", userDto.getUserId());
     }
 }
